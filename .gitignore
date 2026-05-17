@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+checkpoints/*
+!checkpoints/.gitkeep
+logs/*
+!logs/.gitkeep
+
+scenario/*.tmp
+scenario/*.log
+scenario/*.xml~
+
+.venv/
+.idea/
+

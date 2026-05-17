@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Manual fixed-time traffic light programs for two_tls_corridor.net.xml
+    Generated for SUMO additional-files.
+
+    Traffic lights covered: B1, C1
+    Cycle length: 90 s
+    C1 offset: 9 s, approximately one link travel time for 120 m at 13.89 m/s.
+
+    Only durations and offsets were changed manually.
+    The phase state strings were copied from the original net.xml so that their
+    length/order matches the generated SUMO network.
+-->
+<additional>
+
+    <tlLogic id="B1" type="static" programID="manual_fixed" offset="0">
+        <phase duration="40" state="gGGggrrrrrgGGggrrrrrrGrG"/>
+        <phase duration="4"  state="gGGggrrrrrgGGggrrrrrrrrr"/>
+        <phase duration="3"  state="yyyyyrrrrryyyyyrrrrrrrrr"/>
+        <phase duration="35" state="rrrrrgGGggrrrrrgGGggGrGr"/>
+        <phase duration="5"  state="rrrrrgGGggrrrrrgGGggrrrr"/>
+        <phase duration="3"  state="rrrrryyyyyrrrrryyyyyrrrr"/>
+    </tlLogic>
+
+    <tlLogic id="C1" type="static" programID="manual_fixed" offset="9">
+        <phase duration="40" state="gGGggrrrrrgGGggrrrrrrGrG"/>
+        <phase duration="4"  state="gGGggrrrrrgGGggrrrrrrrrr"/>
+        <phase duration="3"  state="yyyyyrrrrryyyyyrrrrrrrrr"/>
+        <phase duration="35" state="rrrrrgGGggrrrrrgGGggGrGr"/>
+        <phase duration="5"  state="rrrrrgGGggrrrrrgGGggrrrr"/>
+        <phase duration="3"  state="rrrrryyyyyrrrrryyyyyrrrr"/>
+    </tlLogic>
+
+</additional>

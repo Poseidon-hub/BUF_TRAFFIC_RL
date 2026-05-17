@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <person id="auto_ped_0" depart="0">
+        <walk from="A0A1" to="C0B0"/>
+    </person>
+    <person id="auto_ped_1" depart="10">
+        <walk from="A0B0" to="C0C1"/>
+    </person>
+    <person id="auto_ped_2" depart="20">
+        <walk from="A1A0" to="C0D0"/>
+    </person>
+    <person id="auto_ped_3" depart="30">
+        <walk from="A1A2" to="C1B1"/>
+    </person>
+    <person id="auto_ped_4" depart="40">
+        <walk from="A1B1" to="C1C0"/>
+    </person>
+    <person id="auto_ped_5" depart="50">
+        <walk from="A2A1" to="C1C2"/>
+    </person>
+    <person id="auto_ped_6" depart="60">
+        <walk from="A2B2" to="C1D1"/>
+    </person>
+    <person id="auto_ped_7" depart="70">
+        <walk from="B0A0" to="C2B2"/>
+    </person>
+    <person id="auto_ped_8" depart="80">
+        <walk from="B0B1" to="C2C1"/>
+    </person>
+    <person id="auto_ped_9" depart="90">
+        <walk from="B0C0" to="C2D2"/>
+    </person>
+    <person id="auto_ped_10" depart="100">
+        <walk from="B1A1" to="D0C0"/>
+    </person>
+    <person id="auto_ped_11" depart="110">
+        <walk from="B1B0" to="D0D1"/>
+    </person>
+    <person id="auto_ped_12" depart="120">
+        <walk from="B1B2" to="D1C1"/>
+    </person>
+    <person id="auto_ped_13" depart="130">
+        <walk from="B1C1" to="D1D0"/>
+    </person>
+    <person id="auto_ped_14" depart="140">
+        <walk from="B2A2" to="D1D2"/>
+    </person>
+    <person id="auto_ped_15" depart="150">
+        <walk from="B2B1" to="D2C2"/>
+    </person>
+    <person id="auto_ped_16" depart="160">
+        <walk from="B2C2" to="D2D1"/>
+    </person>
+    <person id="auto_ped_17" depart="170">
+        <walk from="C0B0" to="A0A1"/>
+    </person>
+    <person id="auto_ped_18" depart="180">
+        <walk from="C0C1" to="A0B0"/>
+    </person>
+    <person id="auto_ped_19" depart="190">
+        <walk from="C0D0" to="A1A0"/>
+    </person>
+    <person id="auto_ped_20" depart="200">
+        <walk from="C1B1" to="A1A2"/>
+    </person>
+    <person id="auto_ped_21" depart="210">
+        <walk from="C1C0" to="A1B1"/>
+    </person>
+    <person id="auto_ped_22" depart="220">
+        <walk from="C1C2" to="A2A1"/>
+    </person>
+    <person id="auto_ped_23" depart="230">
+        <walk from="C1D1" to="A2B2"/>
+    </person>
+    <person id="auto_ped_24" depart="240">
+        <walk from="C2B2" to="B0A0"/>
+    </person>
+    <person id="auto_ped_25" depart="250">
+        <walk from="C2C1" to="B0B1"/>
+    </person>
+    <person id="auto_ped_26" depart="260">
+        <walk from="C2D2" to="B0C0"/>
+    </person>
+    <person id="auto_ped_27" depart="270">
+        <walk from="D0C0" to="B1A1"/>
+    </person>
+    <person id="auto_ped_28" depart="280">
+        <walk from="D0D1" to="B1B0"/>
+    </person>
+    <person id="auto_ped_29" depart="290">
+        <walk from="D1C1" to="B1B2"/>
+    </person>
+</routes>

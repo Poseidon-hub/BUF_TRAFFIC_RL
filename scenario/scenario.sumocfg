@@ -1,0 +1,5 @@
+<input>
+    <net-file value="two_tls_corridor.net.xml"/>
+    <route-files value="routes.rou.xml"/>
+    <additional-files value="tls.add.xml"/>
+</input>
