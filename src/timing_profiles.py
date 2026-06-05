@@ -54,9 +54,9 @@ def load_timing_profile(path) -> TimingProfile:
     if suffix == ".xml" or path.name.lower().endswith(".add.xml"):
         return TimingProfile(path=path, programs=parse_tls_timing_file(path))
     if suffix == ".csv":
-        raise NotImplementedError("CSV timing profiles are not implemented yet. Use SUMO tls.add.xml.")
+        raise ValueError("CSV timing profiles are unsupported in this project. Use SUMO tls.add.xml.")
     if suffix == ".json":
-        raise NotImplementedError("JSON timing profiles are not implemented yet. Use SUMO tls.add.xml.")
+        raise ValueError("JSON timing profiles are unsupported in this project. Use SUMO tls.add.xml.")
     raise ValueError(f"Unsupported timing profile format: {path}")
 
 

@@ -131,8 +131,20 @@ def aggregate_neighbors(tls_id: str, stats_dict: dict, neighbors_dict: dict) -> 
     neighbors = neighbors_dict.get(tls_id, [])
     present = [stats_dict[n] for n in neighbors if n in stats_dict]
     if not present:
-        return {"mean_queue": 0.0, "mean_wait": 0.0}
+        return {
+            "mean_queue": 0.0,
+            "mean_wait": 0.0,
+            "mean_pressure": 0.0,
+            "max_queue": 0.0,
+        }
 
     mean_queue = sum(float(item.get("queue", 0.0)) for item in present) / len(present)
     mean_wait = sum(float(item.get("waiting_time", 0.0)) for item in present) / len(present)
-    return {"mean_queue": mean_queue, "mean_wait": mean_wait}
+    mean_pressure = sum(float(item.get("pressure", 0.0)) for item in present) / len(present)
+    max_queue = max(float(item.get("queue", 0.0)) for item in present)
+    return {
+        "mean_queue": mean_queue,
+        "mean_wait": mean_wait,
+        "mean_pressure": mean_pressure,
+        "max_queue": max_queue,
+    }

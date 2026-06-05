@@ -10,6 +10,23 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from .perf_utils import resolve_torch_device
+
+
+def _make_grad_scaler(enabled: bool):
+    if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
+        try:
+            return torch.amp.GradScaler("cuda", enabled=enabled)
+        except TypeError:
+            return torch.amp.GradScaler(enabled=enabled)
+    return torch.cuda.amp.GradScaler(enabled=enabled)
+
+
+def _autocast_cuda(enabled: bool):
+    if hasattr(torch, "amp") and hasattr(torch.amp, "autocast"):
+        return torch.amp.autocast("cuda", enabled=enabled)
+    return torch.cuda.amp.autocast(enabled=enabled)
+
 
 def _activation_layer(name: str) -> nn.Module:
     normalized = str(name or "relu").lower()
@@ -32,12 +49,14 @@ class QNetwork(nn.Module):
         use_dueling: bool = False,
         dueling_aggregation: str = "mean",
         activation: str = "relu",
+        initial_switch_bias: float = 0.0,
     ):
         super().__init__()
         self.obs_dim = int(obs_dim)
         self.action_dim = max(1, int(action_dim))
         self.use_dueling = bool(use_dueling)
         self.dueling_aggregation = str(dueling_aggregation or "mean").lower()
+        self.initial_switch_bias = float(initial_switch_bias)
         if self.action_dim < 2:
             warnings.warn(
                 "QNetwork was created with action_dim < 2; traffic-light RL normally expects two actions.",
@@ -71,6 +90,21 @@ class QNetwork(nn.Module):
             self.value_stream = None
             self.advantage_stream = None
             self.net = nn.Linear(in_dim, self.action_dim)
+        self._initialize_action_head()
+
+    def _initialize_action_head(self) -> None:
+        if self.action_dim < 2:
+            return
+        if self.use_dueling:
+            action_head = self.advantage_stream[-1]
+        else:
+            action_head = self.net
+        if not isinstance(action_head, nn.Linear):
+            return
+        nn.init.zeros_(action_head.weight)
+        nn.init.zeros_(action_head.bias)
+        with torch.no_grad():
+            action_head.bias[1] = self.initial_switch_bias
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = self.feature_extractor(x)
@@ -102,7 +136,8 @@ class ReplayBuffer:
         )
 
     def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        batch = random.sample(self.buffer, batch_size)
+        indices = np.random.randint(0, len(self.buffer), size=int(batch_size))
+        batch = [self.buffer[int(idx)] for idx in indices]
         obs, actions, rewards, next_obs, dones = zip(*batch)
         return (
             np.stack(obs).astype(np.float32),
@@ -128,17 +163,24 @@ class DQNShared:
         self.eps_end = float(config.eps_end)
         self.eps_decay_steps = max(1, int(config.eps_decay_steps))
         self.grad_clip_norm = float(getattr(config, "grad_clip_norm", 10.0))
+        self.initial_switch_bias = float(getattr(config, "initial_switch_bias", 0.02))
         self.global_step = 0
         self.target_updates_count = 0
         self.last_target_update_step = 0
         self.last_update_metrics = {}
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = resolve_torch_device(config)
+        self.use_amp = bool(getattr(config, "use_amp", False)) and self.device.type == "cuda"
+        self.non_blocking_transfer = bool(
+            getattr(config, "non_blocking_device_transfer", True)
+        ) and self.device.type == "cuda"
+        self.scaler = _make_grad_scaler(self.use_amp)
 
         hidden_dim = int(getattr(config, "model_hidden_dim", getattr(config, "hidden_dim", 128)))
         num_hidden_layers = int(
             getattr(config, "model_num_hidden_layers", getattr(config, "num_hidden_layers", 2))
         )
         activation = str(getattr(config, "model_activation", "relu"))
+        initial_switch_bias = self.initial_switch_bias
 
         self.q_net = QNetwork(
             obs_dim,
@@ -148,6 +190,7 @@ class DQNShared:
             use_dueling=self.use_dueling_dqn,
             dueling_aggregation=self.dueling_aggregation,
             activation=activation,
+            initial_switch_bias=initial_switch_bias,
         ).to(self.device)
         self.target_net = QNetwork(
             obs_dim,
@@ -157,6 +200,7 @@ class DQNShared:
             use_dueling=self.use_dueling_dqn,
             dueling_aggregation=self.dueling_aggregation,
             activation=activation,
+            initial_switch_bias=initial_switch_bias,
         ).to(self.device)
         self.target_net.load_state_dict(self.q_net.state_dict())
         self.target_net.eval()
@@ -212,22 +256,24 @@ class DQNShared:
             return None
 
         obs, actions, rewards, next_obs, dones = self.replay.sample(self.batch_size)
-        obs_t = torch.as_tensor(obs, device=self.device)
-        actions_t = torch.as_tensor(actions, device=self.device).unsqueeze(1)
-        rewards_t = torch.as_tensor(rewards, device=self.device).unsqueeze(1)
-        next_obs_t = torch.as_tensor(next_obs, device=self.device)
-        dones_t = torch.as_tensor(dones, device=self.device).unsqueeze(1)
+        obs_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
+        actions_t = torch.as_tensor(actions, dtype=torch.long, device=self.device).unsqueeze(1)
+        rewards_t = torch.as_tensor(rewards, dtype=torch.float32, device=self.device).unsqueeze(1)
+        next_obs_t = torch.as_tensor(next_obs, dtype=torch.float32, device=self.device)
+        dones_t = torch.as_tensor(dones, dtype=torch.float32, device=self.device).unsqueeze(1)
 
-        all_q_values = self.q_net(obs_t)
-        q_values = all_q_values.gather(1, actions_t)
-        target = self.compute_td_target(rewards_t, next_obs_t, dones_t)
-        td_error = target - q_values
-
-        loss = F.smooth_l1_loss(q_values, target)
-        self.optimizer.zero_grad()
-        loss.backward()
-        nn.utils.clip_grad_norm_(self.q_net.parameters(), self.grad_clip_norm)
-        self.optimizer.step()
+        try:
+            all_q_values, q_values, target, td_error, loss = self._update_tensors(
+                obs_t, actions_t, rewards_t, next_obs_t, dones_t
+            )
+        except RuntimeError:
+            if not self.use_amp:
+                raise
+            self.use_amp = False
+            self.scaler = _make_grad_scaler(False)
+            all_q_values, q_values, target, td_error, loss = self._update_tensors(
+                obs_t, actions_t, rewards_t, next_obs_t, dones_t
+            )
 
         metrics = {
             "loss": float(loss.item()),
@@ -239,6 +285,26 @@ class DQNShared:
         }
         self.last_update_metrics = metrics
         return metrics
+
+    def _update_tensors(self, obs_t, actions_t, rewards_t, next_obs_t, dones_t):
+        self.optimizer.zero_grad(set_to_none=True)
+        with _autocast_cuda(self.use_amp):
+            all_q_values = self.q_net(obs_t)
+            q_values = all_q_values.gather(1, actions_t)
+            target = self.compute_td_target(rewards_t, next_obs_t, dones_t)
+            td_error = target - q_values
+            loss = F.smooth_l1_loss(q_values, target)
+        if self.use_amp:
+            self.scaler.scale(loss).backward()
+            self.scaler.unscale_(self.optimizer)
+            nn.utils.clip_grad_norm_(self.q_net.parameters(), self.grad_clip_norm)
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            loss.backward()
+            nn.utils.clip_grad_norm_(self.q_net.parameters(), self.grad_clip_norm)
+            self.optimizer.step()
+        return all_q_values, q_values, target, td_error, loss
 
     def update_target(self, global_step: Optional[int] = None) -> None:
         self.target_net.load_state_dict(self.q_net.state_dict())
@@ -257,6 +323,7 @@ class DQNShared:
                 "use_double_dqn": self.use_double_dqn,
                 "use_dueling_dqn": self.use_dueling_dqn,
                 "dueling_aggregation": self.dueling_aggregation,
+                "initial_switch_bias": self.initial_switch_bias,
                 "obs_dim": self.obs_dim,
                 "action_dim": self.action_dim,
                 "q_net": self.q_net.state_dict(),
@@ -312,11 +379,27 @@ class DQNShared:
 
 
 def model_info_from_config(config, obs_dim: int, action_dim: int) -> dict:
+    cuda_available = False
+    cuda_device_name = None
+    cuda_memory_allocated_mb = 0.0
+    try:
+        device = str(resolve_torch_device(config))
+        cuda_available = bool(torch.cuda.is_available())
+        if cuda_available:
+            cuda_device_name = torch.cuda.get_device_name(0)
+            cuda_memory_allocated_mb = round(torch.cuda.memory_allocated(0) / (1024 * 1024), 3)
+    except Exception:
+        device = str(getattr(config, "device", "auto"))
     return {
         "algorithm": str(getattr(config, "algorithm", "dqn")),
         "use_double_dqn": bool(getattr(config, "use_double_dqn", False)),
         "use_dueling_dqn": bool(getattr(config, "use_dueling_dqn", False)),
         "checkpoint_version": int(getattr(config, "checkpoint_version", 1)),
+        "initial_switch_bias": float(getattr(config, "initial_switch_bias", 0.0)),
         "obs_dim": int(obs_dim),
         "action_dim": int(action_dim),
+        "device": device,
+        "cuda_available": cuda_available,
+        "cuda_device_name": cuda_device_name,
+        "cuda_memory_allocated_mb": cuda_memory_allocated_mb,
     }

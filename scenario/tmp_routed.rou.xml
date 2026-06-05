@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-05-28T15:42:58.794837+02:00 by Eclipse SUMO duarouter 1.26.0
+<duarouterConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/duarouterConfiguration.xsd">
+
+    <input>
+        <net-file value="scenario\kaliningrad.net.xml"/>
+        <route-files value="scenario\kaliningrad.vtypes.xml,scenario\tmp_trips.xml"/>
+    </input>
+
+    <output>
+        <output-file value="scenario\tmp_routed.rou.xml"/>
+    </output>
+
+    <report>
+        <no-warnings value="true"/>
+        <ignore-errors value="true"/>
+    </report>
+
+</duarouterConfiguration>
+-->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <vType id="car" length="4.50" maxSpeed="16.70" speedFactor="normc(1.00,0.10,0.20,2.00)" vClass="passenger" guiShape="passenger" color="204,204,204" accel="2.6" decel="4.5" sigma="0.5"/>
+    <vehicle id="t0" type="car" depart="0.00">
+        <route edges="-429763147 -43055200#1 -43055200#0 107293693#0 107293693#1 -107293693#1 -107293693#0 43055200#0 43055200#1 429763141#1"/>
+    </vehicle>
+</routes>

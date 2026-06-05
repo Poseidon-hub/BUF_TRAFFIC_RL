@@ -102,10 +102,26 @@ def build_checkpoint_metadata(config, scenario, tls_ids, obs_dim: int, num_phase
             getattr(config, "model_num_hidden_layers", getattr(config, "num_hidden_layers", 2))
         ),
         "model_activation": str(getattr(config, "model_activation", "relu")),
+        "initial_switch_bias": float(getattr(config, "initial_switch_bias", 0.0)),
         "obs_dim": int(obs_dim),
         "action_dim": action_dim,
         "num_phases_per_tls": {str(k): int(v) for k, v in sorted(num_phases_per_tls.items())},
         "training_params": _training_params_snapshot(config),
+        "run_config": _json_safe(getattr(config, "run_config", getattr(config, "last_run_setup", {}))),
+        "demand_mode": _json_safe(getattr(config, "demand_mode", None)),
+        "actual_vehicle_count": _json_safe(
+            (getattr(config, "demand_info", {}) or {}).get("actual_vehicle_count")
+        ),
+        "pedestrian_count": _json_safe(getattr(config, "pedestrian_demand_count", None)),
+        "pedestrian_mode": _json_safe(getattr(config, "pedestrian_mode", None)),
+        "eval_seconds": _json_safe(getattr(config, "evaluation_seconds", None)),
+        "train_episodes": _json_safe(getattr(config, "train_episodes", None)),
+        "reward_variant": _json_safe(getattr(config, "reward_variant", None)),
+        "learning_rate": _json_safe(getattr(config, "lr", None)),
+        "gamma": _json_safe(getattr(config, "gamma", None)),
+        "min_green": _json_safe(getattr(config, "min_green", None)),
+        "max_green": _json_safe(getattr(config, "max_green", None)),
+        "control_decision_interval": _json_safe(getattr(config, "control_decision_interval", None)),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -138,6 +154,7 @@ def validate_checkpoint_compatibility(config, current_metadata: dict) -> Tuple[b
             current_metadata.get("model_num_hidden_layers"),
         ),
         ("model_activation", saved_meta.get("model_activation"), current_metadata.get("model_activation")),
+        ("initial_switch_bias", saved_meta.get("initial_switch_bias"), current_metadata.get("initial_switch_bias")),
         ("obs_dim", saved_meta.get("obs_dim"), current_metadata.get("obs_dim")),
         ("action_dim", saved_meta.get("action_dim"), current_metadata.get("action_dim")),
         ("tls_ids", saved_meta.get("tls_ids"), current_metadata.get("tls_ids")),
@@ -175,7 +192,6 @@ def validate_checkpoint_compatibility(config, current_metadata: dict) -> Tuple[b
 def _scenario_files(scenario) -> list:
     paths = []
     for path in [
-        scenario.sumocfg,
         scenario.net,
         *scenario.route_files,
         *scenario.additional_files,
@@ -234,6 +250,9 @@ def _training_params_snapshot(config) -> dict:
         "use_dueling_dqn",
         "dueling_aggregation",
         "checkpoint_version",
+        "scenario_preferred_prefix",
+        "allow_mixed_scenario_files",
+        "kaliningrad_validation_enabled",
         "model_hidden_dim",
         "model_num_hidden_layers",
         "model_activation",
@@ -264,6 +283,7 @@ def _training_params_snapshot(config) -> dict:
         "reward_pedestrian_wait_weight",
         "reward_pedestrian_running_weight",
         "reward_pedestrian_blocked_weight",
+        "pedestrian_priority_max_share",
         "pedestrian_reward_normalization",
         "pedestrian_reward_scope",
         "strict_reward_validation",
